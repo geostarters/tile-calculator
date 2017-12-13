@@ -1,0 +1,375 @@
+<html>
+
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="author" content="Institut Cartogràfic i Geològic de Catalunya"/>
+	<meta name="description" content="Tile estimator">
+	<meta name="robots" content="index,follow">
+	<meta name="geo.region" content="ES-CT" />
+	<meta name="geo.placename" content="Barcelona" />
+	<meta name="geo.position" content="41.363892;2.186279" />
+	<meta name="language" content="ca" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="llibreries/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+	<link rel="stylesheet" href="css/locationfilter.css" />
+	<title>Tile calculator</title>
+	<link href="llibreries/css/font-awesome.min.css" rel="stylesheet" >
+
+	<style>
+	#map { height: 800px;width:70% }
+	.leaflet-tile { border: solid red 1px; }
+	#resultats{
+		left: 70%;
+		position: absolute;
+		top: 0;
+		width: 30%;
+		padding:10px;}
+
+#text{
+	font-size: 98%;
+     left: 70%;
+     padding: 10px;
+     position: absolute;
+     top: 549px;
+     width: 30%;
+}
+
+		#taula {padding-top:14px;font-size: 12px;
+			padding-bottom: 16px;
+			padding-left: 5px;
+		}
+
+		table{font-size: 12px;padding-top: 20px;
+		}
+
+		table td{border:1px solid black}
+
+		fieldset{font-size: 10px;}
+
+		fieldset legend{font-size: 10px;margin-bottom: 5px}
+
+		div.location-filter.button-container {
+
+			display: none;
+
+		}
+
+
+		</style>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+		<script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+		<script src="js/locationfilter.js"></script>
+		<script>
+		function lon2tile(lon,zoom) { return (Math.floor((lon+180)/360*Math.pow(2,zoom))); }
+		function lat2tile(lat,zoom)  { return (Math.floor((1-Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 *Math.pow(2,zoom))); }
+		</script>
+
+
+		<head>
+
+
+			<body>
+
+				<div id="map"></div>
+
+
+				<div id="resultats">
+
+					<fieldset>
+						<legend>BBOX EPSG:4326:</legend>
+						<label id="bbox_4326"></label>
+					</fieldset>
+
+					<fieldset>
+						<legend>BBOX EPSG:3857:</legend>
+						<label id="bbox_3857"></label>
+					</fieldset>
+
+					<fieldset>
+						<span>Estimated Kb * tiles:</span>
+						<input type="text" value="12" size="3" id="kb_txt"></input>
+						<select id="cmb_levels">
+					  <option value="6">Num levels 6</option>
+					  <option value="7">Num levels 7</option>
+					  <option value="8">Num levels 8</option>
+					  <option value="9">Num levels 9</option>
+					   <option value="10">Num levels 10</option>
+					  <option value="11">Num levels 11</option>
+					  <option value="12">Num levels 12</option>
+					  <option value="13">Num levels 13</option>
+					   <option value="14">Num levels 14</option>
+					  <option value="15">Num levels 15</option>
+					  <option value="16">Num levels 16</option>
+					  <option value="17">Num levels 17</option>
+					  <option value="18">Num levels 18</option>
+					 <option value="19">Num levels 19</option>
+					<option selected  value="20">Num levels 20</option>
+					<option value="21">Num levels 21</option>
+					<option value="22">Num levels 22</option>
+			</select>
+					</fieldset>
+
+
+					<div id="taula"></div>
+
+
+
+				</div>
+
+
+<div id="text">
+
+	<h5>Tile Calculator</h5>
+<small>
+	This simple tool, built on top of <a href="https://twitter.com/leafletjs" target="_blank"> @leafletjs </a> and <a href="https://github.com/kajic/leaflet-locationfilter" target="_blank"> Location filter </a> pluguin, displays a bounding box that can be dragged and resized to any position at any zoom level. The extent of this boundingbox is then used to calculate the number of tiles for each zoom level needed to cover the area and also to estimate the total weight of the corresponding pyramid (or mbtiles equivalent). The tile size in KB can be adjusted in the text window provided to better suit your requirements.
+	Developed at the ICGC (<a href="https://twitter.com/ICGCat" target="_blank">@ICGCat</a>) by Geostart (<a href="https://twitter.com/geostarters" target="_blank">@geostarters</a>) lives with many other tools and experiments in the Betaportal (<a href="http://betaportal.icgc.cat" target="_blank">http://betaportal.icgc.cat</a>)
+
+</small>
+
+
+</div>
+
+
+				<script>
+
+
+
+				</script>
+
+				<script>
+
+				var north_edge=42.883999998;
+				var west_edge=3.335999997;
+				var south_edge=40.470000001;
+				var east_edge=0.108700003;
+
+
+				// initialize map
+				var map = L.map('map').setView([41, 2.5], 8);
+				
+				
+				topoG=L.layerGroup();
+				ortoG=L.layerGroup();
+				
+				L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+					attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+				}).addTo(topoG);
+
+
+
+
+				TOPO_GEO_ICC_L8_17 = new L.TileLayer('http://www.instamaps.cat/mapcache/tms/1.0.0/A250TARJ3857@GMTOT/{z}/{x}/{y}.png',{
+					tms:true,
+					continuousWorld: true,
+					worldCopyJump: false,
+					attribution: 'CC-BY <a href="http://www.icgc.cat">ICGC</a>',
+					minZoom: 8,
+					maxZoom: 18
+
+				}).addTo(topoG);
+
+
+				topoG.addTo(map);
+				
+				
+				
+				
+				topo_icgc = L.tileLayer(
+				'http://mapcache.icc.cat/map/bases_noutm/wmts/topo/GRID3857/{z}/{x}/{y}.jpeg',
+				{
+					maxZoom : 20,
+					minZoom : 1,
+					attribution: 'CC-BY <a href="http://www.icgc.cat">ICGC</a>',
+
+				});
+
+				
+				Esri_WorldImagery = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash;'
+}).addTo(ortoG);
+				
+		orto_icgc =L.tileLayer('http://mapcache.icc.cat/map/bases_noutm/wmts/orto/GRID3857/{z}/{x}/{y}.jpeg',
+			{
+				maxZoom : 20,
+				minZoom : 1,
+				attribution : 'orto_icgc'
+			}).addTo(ortoG);
+
+			
+
+			var com = L.tileLayer.wms("http://geoserveis.icc.cat/icc_limadmin/wms/service", {
+    layers: '5,1',
+    format: 'image/png',
+    transparent: true,
+   attribution: 'CC-BY <a href="http://www.icgc.cat">ICGC</a>'
+});
+			
+			
+			var mun = L.tileLayer.wms("http://geoserveis.icc.cat/icc_limadmin/wms/service", {
+    layers: '4,2',
+    format: 'image/png',
+    transparent: true,
+   attribution: 'CC-BY <a href="http://www.icgc.cat">ICGC</a>'
+});
+			
+			
+
+		var baseMaps = {
+	    "Mapa": topoG,
+	    "Foto": ortoG
+		};
+
+		var overlayMaps = {
+			"Topo ICGC": topo_icgc,
+			"Comarques": com,
+			"Municipis": mun
+		};
+				
+				
+				
+				
+
+				map.fitBounds([
+					[south_edge, west_edge],
+					[north_edge, east_edge]
+				]);
+
+				var _bounds=L.latLngBounds([south_edge, west_edge],[north_edge, east_edge]);
+				map.attributionControl.setPrefix(" ZL:" + map.getZoom());
+				map.on('moveend', function () {
+					map.attributionControl.setPrefix(" ZL:" + map.getZoom());
+				});
+
+				L.control.layers(baseMaps, overlayMaps).addTo(map);
+				
+
+				var locationFilter = new L.LocationFilter({bounds:_bounds,enable:true}).addTo(map);
+
+
+				locationFilter.on("change", function (e) {
+					calculaNumTiles();
+				});
+
+				locationFilter.on("enabled", function () {
+					calculaNumTiles();
+				});
+
+				jQuery('#kb_txt').on('change', function(){
+
+					calculaNumTiles();
+
+				});
+
+				jQuery('#cmb_levels').on('change', function(){
+
+					calculaNumTiles();
+
+				});
+				
+				
+
+				function calculaNumTiles(){
+
+
+
+					var bounds = locationFilter.getBounds();
+
+					var zoomL = parseInt(jQuery('#cmb_levels').val())+1;
+					var north_edge=bounds.getNorth();
+					var west_edge=bounds.getWest();
+					var south_edge=bounds.getSouth();
+					var east_edge=bounds.getEast();
+					var NW = L.CRS.EPSG3857.project(bounds.getNorthWest());
+					var SE = L.CRS.EPSG3857.project(bounds.getSouthEast());
+
+
+console.info(zoomL);
+
+					jQuery('#bbox_4326').html(bounds.getEast().toFixed(4)+" , "+bounds.getSouth().toFixed(4)+" , "+ bounds.getWest().toFixed(4) +" , "+bounds.getNorth().toFixed(4));
+					jQuery('#bbox_3857').html(NW.x.toFixed(4)+" , "+SE.y.toFixed(4)+" , "+SE.x.toFixed(4)+" , "+NW.y.toFixed(4));
+
+					var taula=[];
+
+					taula.push('<table style="width:100%"><tr><td>Zoom</td><td>Num. Tiles</td><td>Kb</td></tr>');
+
+
+var numTilesTotal=0;
+var numKBsTotal=0;
+
+					for(var i=1; i < zoomL; i++){
+						var zoom=i;
+
+						var top_tile    = lat2tile(north_edge, zoom); // eg.lat2tile(34.422, 9);
+						var left_tile   = lon2tile(west_edge, zoom);
+						var bottom_tile = lat2tile(south_edge, zoom);
+						var right_tile  = lon2tile(east_edge, zoom);
+						var width       = Math.abs(left_tile - right_tile) + 1;
+						var height      = Math.abs(top_tile - bottom_tile) + 1;
+						var kb=parseFloat(jQuery('#kb_txt').val())*1024;
+						// total tiles
+						var total_tiles = width * height; // -> eg. 377
+
+						var number=total_tiles;
+						numTilesTotal=numTilesTotal+number;
+						
+						var numberKB1=	parseFloat(total_tiles*kb).toFixed(0);
+						numKBsTotal=parseFloat(numKBsTotal)+parseFloat(numberKB1);
+						numberKB=	bytesToSize(numberKB1);
+						taula.push('<tr><td>'+i+'</td><td>'+addCommas(number)+'</td><td>'+addCommas(formatBytes(numberKB1,3))+'</td></tr>');
+
+					}
+taula.push('<tr><td><b>Total</b></td><td><b>'+addCommas(numTilesTotal)+'</b></td><td><b>'+addCommas(formatBytes(numKBsTotal,3))+'</b></td></tr>');
+					taula.push('</table>');
+
+					jQuery('#taula').html(taula.join(""));
+
+				}
+
+
+				calculaNumTiles();
+
+				function formatBytes(bytes,decimals) {
+					if(bytes == 0) return '0 Byte';
+					var k = 1024;
+					var dm = decimals + 1 || 3;
+					var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+					var i = Math.floor(Math.log(bytes) / Math.log(k));
+					return (bytes / Math.pow(k, i)).toPrecision(dm) + ' ' + sizes[i];
+				}
+
+				function bytesToSize(bytes) {
+					var sizes = ['Bytes', 'KB', 'MB', 'GB','TB'];
+					if (bytes == 0) return '0 Byte';
+					var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+					return Math.round(bytes / Math.pow(1024, i), 4) + ' ' + sizes[i];
+				};
+
+
+
+				function addCommas(nStr) {
+					nStr += '';
+					nStr = nStr.replace(".", ",");
+
+					x = nStr.split(',');
+					x1 = x[0];
+					x2 = x.length > 1 ? ',' + x[1] : '';
+					var rgx = /(\d+)(\d{3})/;
+					while (rgx.test(x1)) {
+
+						x1 = x1.replace(rgx, '$1' + '.' + '$2');
+					}
+					return x1 + x2;
+				}
+
+
+
+
+
+				</script>
+
+				<script src="/betaserver.google-analytics.js"></script>
+				<body>
+
+
+					</html>
